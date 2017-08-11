@@ -4156,3 +4156,6 @@ html, body {
   max-height: 100%;
   overflow-y: auto;
   white-space: pre; }
+
+button[disabled] {
+  opacity: .75; }

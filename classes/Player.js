@@ -15,21 +15,20 @@ exports = module.exports = game => {
 
 
   class Player {
-    constructor(name){
-      this.code    = '';
+    constructor(name, pin){
 
       map.set(this, {
         _id:    uuid(),
         name:   name,
         active: true,
-        socket: null,
+        pin:    pin,
+        code:   ''
       });
 
       const private_keys = [
         'getState',
         'build',
         'init',
-        'setCode',
         'log'
       ];
       try {
@@ -48,17 +47,20 @@ exports = module.exports = game => {
     // private get/sets
     get _id(){    return map.get(this)._id; }
     get name(){   return map.get(this).name; }
-    get socket(){ return map.get(this).socket; }
+    get pin(){    return map.get(this).pin; }
+    get sockets(){
+      return game.players_sockets[this._id];
+    }
     get pieces(){
       return game.pieces
         .filter(p => p.player._id === this._id);
     }
+    get code(){   return map.get(this).code; }
 
+    set code(value){
+      map.get(this).code = value;
 
-    set socket(value){
-      if(this.socket === null){
-        map.get(this).socket = value;
-      }
+      this.send('update_code', value);
     }
 
     //--- private get/sets
@@ -80,13 +82,6 @@ exports = module.exports = game => {
       })
     }
 
-    setCode(code){
-      return new Promise((resolve, reject) => {
-        this.code = code;
-        resolve(player);
-      })
-    }
-
     log(content, type){
       try {
         if(typeof content === 'object'){
@@ -100,13 +95,17 @@ exports = module.exports = game => {
         // removes outer quotes
         content = content.substring(1, content.length-1);
       }
-      if(this.socket !== null){
-        this.socket.emit('log', content, type);
-      }
-      else {
-        console.log('pseudo emit', content, type);
+      for(let socket of this.sockets){
+        socket.emit('log', content, type);
       }
 
+    }
+
+    send(){
+      let args = [...arguments];
+      for(let socket of this.sockets){
+        socket.emit.apply(socket, args);
+      }
     }
 
     evalCode(){

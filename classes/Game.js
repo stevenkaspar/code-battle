@@ -4,6 +4,8 @@ class Game {
   constructor(){
     this.players = [];
 
+    this.players_sockets = {};
+
     Object.defineProperty(this, 'pieces', {
       writable:   true,
       enumerable: true,
@@ -62,15 +64,51 @@ class Game {
   addIoListeners(){
     this.io.on('connection', socket => {
 
+      let player_id = null;
+
       socket.emit('game_state', this.getState());
 
-      socket.on('join_game', player_id => {
-        this.findPlayer(player_id).then(player => {
-          player.socket = socket;
+      socket.on('join_game', (_player_id, pin) => {
+
+        this.findPlayer(_player_id).then(player => {
+
+          // set the socket-global player_id
+          player_id = _player_id;
+
+          if(player.pin !== pin){
+            console.log('INVALID SOCKET PIN - HACKER');
+            socket.emit('game_state', {});
+            socket.disconnect();
+            return;
+          }
+
+          if(!this.players_sockets[player_id]){
+            this.players_sockets[player_id] = [];
+          }
+
+          this.players_sockets[player_id].push(socket);
+
           player.log(`Welcome, ${player.name}`);
+
+          if(player.code){
+            socket.emit('update_code', player.code);
+          }
+
         })
         socket.emit('game_state', this.getState());
       });
+
+      socket.on('disconnect', () => {
+
+        if(!this.players_sockets[player_id]){
+          return;
+        }
+
+        const i = this.players_sockets[player_id].indexOf(socket);
+
+        this.players_sockets[player_id].splice(i, 1);
+
+      })
 
     });
   }
@@ -132,28 +170,29 @@ class Game {
     this._time += this.UPDATE_INTERVAL_MS;
   }
 
-  addPlayer(name){
+  addPlayer(name, pin){
     return new Promise((resolve, reject) => {
-      this.canAddPlayerWithName(name).then(can => {
+      let player = this.findPlayerByName(name);
 
-        if(can.add === true){
+      if(!player){
+        player = new this.Player(name, pin);
 
-          let player = new this.Player(name);
-
-          player.init().then(player => {
-            this.players.push(player);
-            this.io.sockets.emit('new_player', player.getState());
-            resolve(player);
-          })
-
+        player.init().then(player => {
+          this.players.push(player);
+          this.io.sockets.emit('new_player', player.getState());
+          resolve(player);
+        })
+      }
+      else {
+        if(player.pin !== pin){
+          reject({
+            message: `PIN doesn't match`
+          });
         }
         else {
-          reject({
-            message: can.message
-          })
+          resolve(player);
         }
-
-      })
+      }
     })
   }
 
@@ -229,28 +268,19 @@ class Game {
     this.io.sockets.emit('update_piece_key', piece._id, key, value);
   }
 
-  canAddPlayerWithName(name){
-    var can = {
-      add:     true,
-      message: null
-    };
-    return new Promise((resolve, reject) => {
-      for(let p of this.players){
-        if(p.name === name){
-          can.add     = false;
-          can.message = 'Player with name already exists';
-          break;
-        }
+  findPlayerByName(name){
+    for(let p of this.players){
+      if(p.name === name){
+        return p;
       }
-      resolve(can);
-    })
+    }
+    return null;
   }
 
   setPlayerCode(player_id, code){
     return this.findPlayer(player_id).then(player => {
-      return player.setCode(code).then(player => {
-        return true;
-      })
+      player.code = code;
+      return true;
     })
   }
 

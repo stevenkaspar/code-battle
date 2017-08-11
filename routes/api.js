@@ -13,8 +13,9 @@ router.get('/game_state', (req, res, next) => {
 
 router.post('/add_player', (req, res, next) => {
   const name = req.body.name;
+  const pin  = req.body.pin;
 
-  game.addPlayer(name).then(player => {
+  game.addPlayer(name, pin).then(player => {
     resolveWithMeta({
       player:  player.getState(),
       game:    game.getState()

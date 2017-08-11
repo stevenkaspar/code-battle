@@ -20,3 +20,7 @@ html, body {
   overflow-y: auto;
   white-space: pre;
 }
+
+button[disabled] {
+  opacity: .75;
+}

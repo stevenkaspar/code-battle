@@ -140,9 +140,10 @@ class Game {
     return piece;
   }
 
-  addPlayer(name){
+  addPlayer(name, pin){
     return Fetch.post(endpoints.add_player, {
-      name: name
+      name: name,
+      pin:  pin
     });
   }
 
@@ -455,21 +456,32 @@ class Log {
 
 
 class Player {
-  constructor(_id){
-    this._id    = _id;
+  constructor(player, pin){
+    this._id    = player._id;
+    this.name   = player.name;
+    this.pin    = pin;
     this.pieces = [];
     this.coder  = new Coder('Code', 'SubmitCodeBtn', this.setCode.bind(this));
     this.coder.cm.setSize('100%', '100%');
 
+
     this.joinSocket();
+    socket.on('update_code', this.handleUpdateCode.bind(this));
   }
 
   joinSocket(){
-    socket.emit('join_game', this._id);
+    socket.emit('join_game', this._id, this.pin);
+  }
+
+  handleUpdateCode(code){
+    if(this.coder.cm.getValue() !== code){
+      this.coder.cm.setValue(code);
+      this.coder.last_submitted_value = code;
+    }
   }
 
   setCode(code){
-    Fetch.post(endpoints.set_code, {
+    return Fetch.post(endpoints.set_code, {
       player_id: this._id,
       code:      code
     })
@@ -483,11 +495,31 @@ class Coder {
       lineNumbers: true,
       mode: 'javascript'
     });
+    this.cm.on('change', this.handleOnChange.bind(this));
+
+
     this.submit = document.getElementById(submit_id);
     this.submit.addEventListener('click', this.handleSubmitClick.bind(this));
-    this.submitCb = submitCb;
+    this._last_submitted_value = '';
+
+    this.submitCb  = submitCb;
 
     this.populateInitialInstructions();
+  }
+
+  get last_submitted_value(){
+    return this._last_submitted_value;
+  }
+
+  set last_submitted_value(value){
+    this._last_submitted_value = value;
+
+    this.handleOnChange();
+  }
+
+  handleOnChange(){
+    const cur_val = this.cm.getValue();
+    this.submit.disabled = (this._last_submitted_value === cur_val);
   }
 
   populateInitialInstructions(){
@@ -526,8 +558,13 @@ for(let p of player.pieces){
   }
 
   handleSubmitClick(e){
-    let value = this.cm.getValue();
-    this.submitCb(value);
+    let value                 = this.cm.getValue();
+    this._last_submitted_value = value;
+    this.submitCb(value).then(response => {
+      console.log(response);
+      this._last_submitted_value = value;
+      this.submit.disabled = true;
+    });
   }
 }
 
@@ -589,12 +626,13 @@ let init = () => {
     e.preventDefault();
 
     const name = join_form.player_name.value;
+    const pin  = join_form.player_pin.value;
 
-    game.addPlayer(name).then(response => {
+    game.addPlayer(name, pin).then(response => {
       log.clear();
       if(response.success){
         join_overlay.parentNode.removeChild(join_overlay);
-        new Player(response.player._id);
+        new Player(response.player, pin);
       }
       else {
         log.error(response.message);
