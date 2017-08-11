@@ -16,14 +16,16 @@ exports = module.exports = game => {
       map.set(this, {
         type:       'Warrior',
         movable:    true,
-        attackable: true,
-        power:      5
+        attackable: true
       });
     }
     get type(){       return map.get(this).type; }
-    get movable(){    return map.get(this).movable; }
-    get attackable(){ return map.get(this).attackable; }
-    get power(){      return map.get(this).power; }
+    get movable(){
+      return map.get(this).movable && this.active;
+    }
+    get attackable(){
+      return map.get(this).attackable && this.active;
+    }
   }
 
   return Warrior;

@@ -28,7 +28,6 @@ exports = module.exports = game => {
       const private_keys = [
         'getState',
         'build',
-        'attack',
         'init',
         'setCode',
         'log'
@@ -73,34 +72,6 @@ exports = module.exports = game => {
 
     build(constructor, x, y){
       return game._playerBuild(this, constructor, x, y);
-    }
-
-    attack(attacker, attackee, damage){
-      let can_attack = false;
-      if(attacker.x === attackee.x){
-        if(attacker.y + 1 === attackee.y || attacker.y - 1 === attackee.y){
-          console.log('in range variance y');
-          can_attack = true;
-        }
-      }
-      else if(attacker.y === attackee.y){
-        if(attacker.x + 1 === attackee.x || attacker.x - 1 === attackee.x){
-          console.log('in range variance x');
-          can_attack = true;
-        }
-      }
-
-      if(can_attack){
-        attackee.health += -damage;
-      }
-      else {
-        var i = 0;
-        while(i < Math.abs(damage * 2)){
-          // waste time of attacker
-          i++;
-        }
-        this.log(`You tried to attack nothing. This is a <em>damage x 2</em> execution time penalty`, 'info');
-      }
     }
 
     init(){

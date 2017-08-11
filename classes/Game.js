@@ -197,6 +197,16 @@ class Game {
     return (this.pieces_grid[x][y] !== null);
   }
 
+  removePiece(piece_id){
+    for(let i = 0, l = this.pieces.length; i < l; i++){
+      if(this.pieces[i]._id === piece_id){
+        this.pieces_grid[this.pieces[i].x][this.pieces[i].y] = null;
+        this.pieces.splice(i, 1);
+        break;
+      }
+    }
+  }
+
   _playerBuild(player, constructor, x, y){
     if(this.tileOccupied(x, y)){
       throw new Error(`That tile (${x}, ${y}) is occupied. Your script has stopped`);
@@ -213,6 +223,8 @@ class Game {
     }
 
     const piece = this.pieces_grid[old_x][old_y];
+
+    this.pieces_grid[old_x][old_y] = null;
 
     this.pieces_grid[new_x][new_y] = piece;
 
@@ -277,7 +289,10 @@ class Game {
     if(!this.io){
       return;
     }
-    this.io.sockets.emit('game_state', this.getState());
+    const game_state = this.getState();
+    // console.log(game_state);
+    // console.log(this.pieces_grid);
+    this.io.sockets.emit('game_state', game_state);
   }
 }
 

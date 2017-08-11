@@ -18,8 +18,12 @@ exports = module.exports = game => {
       });
     }
     get type(){       return map.get(this).type; }
-    get movable(){    return map.get(this).movable; }
-    get attackable(){ return map.get(this).attackable; }
+    get movable(){
+      return map.get(this).movable && this.active;
+    }
+    get attackable(){
+      return map.get(this).attackable && this.active;
+    }
   }
 
   return Home;
