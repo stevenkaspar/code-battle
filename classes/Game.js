@@ -1,19 +1,30 @@
 'use strict';
 
-const logger = require('morgan');
-
-
 class Game {
   constructor(){
     this.players = [];
-    this.pieces  = [];
+
+    Object.defineProperty(this, 'pieces', {
+      writable:   true,
+      enumerable: true,
+      value:      []
+    })
 
     // create an initial grid of 10x10
     const grid_size = 10;
-    this.pieces_grid = new Array(grid_size);
-    for(var i = 0, l = this.pieces_grid.length; i < l; i++){
-      this.pieces_grid[i] = new Array(grid_size);
+    let pieces_grid = new Array(grid_size);
+    for(var i = 0, l = pieces_grid.length; i < l; i++){
+      pieces_grid[i] = new Array(grid_size);
+      for(var i2 = 0, l2 = pieces_grid[i].length; i2 < l2; i2++){
+        pieces_grid[i][i2] = null;
+      }
     }
+    Object.defineProperty(this, 'pieces_grid', {
+      writable:   true,
+      enumerable: true,
+      value:      pieces_grid
+    })
+
 
     // this.count = 0;
     this.in_evals_update_interval = null;
@@ -37,6 +48,8 @@ class Game {
     this.EVAL_CODE_TIMEOUT_MS = 200;
 
     this.MAX_PLAYERS = this.ALOTTED_EVAL_MS / this.EVAL_CODE_TIMEOUT_MS;
+
+    console.log(`MAX_PLAYERS: ${this.MAX_PLAYERS}`);
 
     this.start();
   }
@@ -100,13 +113,6 @@ class Game {
     return array;
   }
 
-  clearInEvalsInterval(){
-    // console.log('clearInEvalsInterval');
-    if(this.in_evals_update_interval){
-      clearInterval(this.in_evals_update_interval);
-    }
-  }
-
   cleanupAfterEvalsRound(){
     // console.log('cleanupAfterEvalsRound');
     if(this.in_evals_update_interval){
@@ -122,24 +128,16 @@ class Game {
 
     // eval players code
     if(this._time % this.EVAL_INTERVAL_MS === 0 && num_players > 0){
-      // console.log('\n\n');
-      const update_interval = this.ALOTTED_EVAL_MS / num_players;
-      // console.log('RUN EVALS', update_interval);
-      // clear the interval if exists
-      this.clearInEvalsInterval();
-      // start interval to send game state evenly spaced for players in game
-      this.in_evals_update_interval = setInterval(this.shiftAndSendGameStateToSockets.bind(this), update_interval);
-      // set timeout to clear the interval after all code has been evald
-      this.in_eval_update_timeout   = setTimeout(this.cleanupAfterEvalsRound.bind(this), this.ALOTTED_EVAL_MS + 1);
+
+      this.sendGameStateToSockets();
 
       // go through players randomly and evalCode
       for(let p of this.getPlayerOrder()){
         // eval the player code
         p.evalCode();
-        // push onto game state to build a sort of history
-        this.eval_game_states.push(this.getState());
+
+        this.sendGameStateToSockets();
       }
-      // console.log('EVALS OVER');
     }
     else {
       this.sendGameStateToSockets();
@@ -195,11 +193,29 @@ class Game {
     return return_grid;
   }
 
+  tileOccupied(x, y){
+    return (this.pieces_grid[x][y] !== null);
+  }
+
   _playerBuild(player, constructor, x, y){
+    if(this.tileOccupied(x, y)){
+      throw new Error(`That tile (${x}, ${y}) is occupied. Your script has stopped`);
+    }
     let piece = new constructor(player, x, y);
     this.pieces.push(piece);
     this.pieces_grid[x][y] = piece;
     return piece;
+  }
+
+  movePiece(old_x, old_y, new_x, new_y){
+    if(this.tileOccupied(new_x, new_y)){
+      throw new Error(`That tile (${new_x}, ${new_y}) is occupied. Your script has stopped. <br/>Make sure to check <em>piece.world</em> to see what is around your piece`);
+    }
+
+    const piece = this.pieces_grid[old_x][old_y];
+
+    this.pieces_grid[new_x][new_y] = piece;
+
   }
 
   canAddPlayerWithName(name){

@@ -110,7 +110,7 @@ class Game {
         tile_scale.z = .1;
         tile.setLocalScale(tile_scale);
         tile.setPosition(x - .5, y - .5, -(tile_scale.z * .5));
-        tile.model.material = app.assets.find('white').resource;
+        tile.model.material = app.assets.find('brown').resource;
         app.root.addChild(tile);
       }
     }
@@ -134,6 +134,11 @@ class Game {
     light.addComponent('light');
     light.setEulerAngles(90, 0, 60);
     app.root.addChild(light);
+
+    let light_2 = new pc.Entity('light');
+    light_2.addComponent('light');
+    light_2.setEulerAngles(50, 0, 60);
+    app.root.addChild(light_2);
   }
 
   createAxis(){
@@ -160,17 +165,53 @@ class Game {
   loadAssets(){
     let promises = [];
 
-    const colors = ['red' ,'blue', 'white'];
+    const assets = [
+      {
+        url: `/files/models/home.json`,
+        name: 'home',
+        type: 'model'
+      },
+      {
+        url: `/files/models/warrior.json`,
+        name: 'warrior',
+        type: 'model'
+      },
+      {
+        url: `/files/colors/brown.json`,
+        name: 'brown',
+        type: 'material'
+      },
+      {
+        url: `/files/colors/green.json`,
+        name: 'green',
+        type: 'material'
+      },
+      {
+        url: `/files/colors/red.json`,
+        name: 'red',
+        type: 'material'
+      },
+      {
+        url: `/files/colors/blue.json`,
+        name: 'blue',
+        type: 'material'
+      },
+      {
+        url: `/files/colors/white.json`,
+        name: 'white',
+        type: 'material'
+      }
+    ];
 
-    for(let color of colors){
-      let asset = new pc.Asset(color, 'material', {
-        url: `/files/colors/${color}.json`
+    for(let asset of assets){
+      let new_asset = new pc.Asset(asset.name, asset.type, {
+        url: asset.url
       })
       promises.push(new Promise((resolve, reject) => {
-        asset.on('load', resolve);
+        new_asset.on('load', resolve);
       }))
-      app.assets.add(asset);
-      app.assets.load(asset);
+      app.assets.add(new_asset);
+      app.assets.load(new_asset);
     }
 
     return Promise.all(promises);
@@ -210,7 +251,19 @@ class Piece {
     this.x = x;
     this.y = y;
 
-    this.entity.setPosition(this.x, this.y, .95);
+    this.entity.setPosition(this.getX(), this.getY(), this.getZ());
+  }
+
+  getZ(){
+    const scale = this.entity.getLocalScale();
+    return scale.z * .5;
+  }
+
+  getX(){
+    return this.x + .5;
+  }
+  getY(){
+    return this.y + .5;
   }
 
   colorModel(color){
@@ -222,7 +275,7 @@ class Piece {
     else if(!color && !this.color){
       this.color = 'red';
     }
-    this.entity.model.material = app.assets.find(this.color).resource;
+    this.entity.model.model.meshInstances[0].material = app.assets.find(this.color).resource;
   }
 
   static nameFromId(_id){
@@ -238,18 +291,20 @@ class Home extends Piece {
   }
 
   build(){
-    let entity = new pc.Entity(Piece.nameFromId(this._id));
+    let entity      = new pc.Entity(Piece.nameFromId(this._id));
+    this.entity = entity;
+
+    let model_asset = app.assets.find('home');
     entity.addComponent('model', {
-      type: 'box'
+      type: 'asset',
+      asset: model_asset
     });
     let entity_scale = entity.getLocalScale();
     entity_scale.x = .8;
     entity_scale.y = .8;
     entity_scale.z = .95;
     entity.setLocalScale(entity_scale);
-    entity.setPosition(this.x - .5, this.y - .5, (entity_scale.z * .5));
-
-    this.entity = entity;
+    entity.setPosition(this.getX(), this.getY(), this.getZ());
 
     this.placeEntity(entity);
   }
@@ -265,19 +320,27 @@ class Warrior extends Piece {
 
   build(){
     let entity = new pc.Entity(Piece.nameFromId(this._id));
+    this.entity = entity;
+
+    let model_asset = app.assets.find('warrior');
     entity.addComponent('model', {
-      type: 'box'
+      type: 'asset',
+      asset: model_asset
     });
     let entity_scale = entity.getLocalScale();
     entity_scale.x = .4;
     entity_scale.y = .4;
     entity_scale.z = .75;
     entity.setLocalScale(entity_scale);
-    entity.setPosition(this.x - .5, this.y - .5, (entity_scale.z * .5) + .25);
-
-    this.entity = entity;
+    entity.setPosition(this.getX(), this.getY(), this.getZ());
 
     this.placeEntity(entity);
+  }
+
+  getZ(){
+    const scale = this.entity.getLocalScale();
+
+    return 0;
   }
 
 }

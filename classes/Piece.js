@@ -54,7 +54,11 @@ exports = module.exports = game => {
       // loop is used because code will be limited to
       // execution time
       for(var i = 0; i < Math.abs(diff); i++){
-        map.get(this).x += direction;
+        let next_val = map.get(this).x + direction;
+
+        game.movePiece(this.x, this.y, next_val, this.y);
+
+        map.get(this).x = next_val;
       }
     }
 
@@ -69,7 +73,11 @@ exports = module.exports = game => {
       // loop is used because code will be limited to
       // execution time
       for(var i = 0; i < Math.abs(diff); i++){
-        map.get(this).y += direction;
+        let next_val = map.get(this).y + direction;
+
+        game.movePiece(this.x, this.y, this.x, next_val);
+
+        map.get(this).y = next_val;
       }
     }
 
