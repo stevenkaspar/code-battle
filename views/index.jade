@@ -1,0 +1,27 @@
+extends layout
+
+block head
+    script(src='/vendor/socket-io/socket.io.slim.js')
+    script(src='/vendor/playcanvas-stable.min.js')
+    script(src='/vendor/codemirror/codemirror.js')
+    link(href='/vendor/codemirror/codemirror.css' rel='stylesheet')
+    script(src='/vendor/codemirror/mode/javascript/javascript.js')
+    script(src='/javascripts/game.js')
+
+block content
+    .h-100.mh-100
+        .row.no-gutters.h-100.mh-100
+            .col-5.d-flex.flex-column.h-100.mh-100
+                .flex-grow-1#CodeContainer
+                    textarea#Code
+                .flex-grow-0
+                    button#SubmitCodeBtn.d-block.w-100.bg-success.text-white use code
+                #JoinOverlay.overlay.bg-inverse.text-white
+                    .overlay-body.bg-white.p-3
+                        form#JoinForm
+                            input.bg-inverse.text-white.text-center.p-2#PlayerName(placeholder='player-name' name='player_name')
+                            button.d-block.w-100.bg-success.text-white(type='submit') join
+            .col-7.d-flex.flex-column.mh-100
+                .flex-grow-0
+                    canvas#Application
+                #Log.flex-grow-1

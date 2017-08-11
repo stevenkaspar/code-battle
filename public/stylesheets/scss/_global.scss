@@ -1,0 +1,30 @@
+body {
+  font-family: $base-font-family;
+}
+
+button {
+  border:      none;
+  padding:     $button-padding;
+  font-family: $base-font-family;
+}
+
+.overlay {
+  z-index:  2;
+  position: absolute;
+  top:      0;
+  right:    0;
+  bottom:   0;
+  left:     0;
+
+  .hide {
+    display: none;
+  }
+
+  .overlay-body {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate( -50%, -50%);
+  }
+
+}

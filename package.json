@@ -1,22 +1,31 @@
 {
   "name": "code-battle",
   "version": "0.0.1",
-  "description": "Code battling game",
-  "main": "index.js",
+  "description": "code battling game",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node ./bin/www"
   },
   "repository": {
     "type": "git",
     "url": "git+ssh://git@github.com/stevenkaspar/code-battle.git"
   },
   "author": "Steven Kaspar",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/stevenkaspar/code-battle/issues"
-  },
-  "homepage": "https://github.com/stevenkaspar/code-battle#readme",
   "dependencies": {
-    "express": "^4.15.4"
+    "body-parser": "~1.15.1",
+    "cookie-parser": "~1.4.3",
+    "debug": "~2.2.0",
+    "express": "~4.13.4",
+    "jade": "~1.11.0",
+    "lodash.clonedeep": "^4.5.0",
+    "morgan": "~1.7.0",
+    "safe-eval": "^0.3.0",
+    "serve-favicon": "~2.3.0",
+    "socket.io": "^2.0.3",
+    "uuid": "^3.1.0"
+  },
+  "devDependencies": {
+    "gulp": "^3.9.1",
+    "gulp-sass": "^3.1.0",
+    "nodemon": "^1.11.0"
   }
 }
