@@ -11,13 +11,19 @@ exports = module.exports = game => {
     constructor(player, x, y){
       super(player, x, y);
 
-      this.color = 'red';
-
       map.set(this, {
         type:       'Warrior',
         movable:    true,
         attackable: true
       });
+
+      this.color = 'red';
+
+      Object.defineProperty(this, 'constructed', {
+        value:      true,
+        writable:   false,
+        enumerable: false
+      })
     }
     get type(){       return map.get(this).type; }
     get movable(){

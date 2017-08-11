@@ -69,6 +69,7 @@ class Game {
           player.socket = socket;
           player.log(`Welcome, ${player.name}`);
         })
+        socket.emit('game_state', this.getState());
       });
 
     });
@@ -113,34 +114,19 @@ class Game {
     return array;
   }
 
-  cleanupAfterEvalsRound(){
-    // console.log('cleanupAfterEvalsRound');
-    if(this.in_evals_update_interval){
-      clearInterval(this.in_evals_update_interval);
-    }
-    // this.count = 0;
-    this.eval_game_states = [];
-    this.sendGameStateToSockets();
-  }
-
   update(){
     const num_players = this.players.length;
 
     // eval players code
     if(this._time % this.EVAL_INTERVAL_MS === 0 && num_players > 0){
 
-      this.sendGameStateToSockets();
-
       // go through players randomly and evalCode
       for(let p of this.getPlayerOrder()){
         // eval the player code
         p.evalCode();
 
-        this.sendGameStateToSockets();
       }
-    }
-    else {
-      this.sendGameStateToSockets();
+
     }
 
     this._time += this.UPDATE_INTERVAL_MS;
@@ -156,6 +142,7 @@ class Game {
 
           player.init().then(player => {
             this.players.push(player);
+            this.io.sockets.emit('new_player', player.getState());
             resolve(player);
           })
 
@@ -200,6 +187,7 @@ class Game {
   removePiece(piece_id){
     for(let i = 0, l = this.pieces.length; i < l; i++){
       if(this.pieces[i]._id === piece_id){
+        this.io.sockets.emit('remove_piece', this.pieces[i].getState());
         this.pieces_grid[this.pieces[i].x][this.pieces[i].y] = null;
         this.pieces.splice(i, 1);
         break;
@@ -212,6 +200,7 @@ class Game {
       throw new Error(`That tile (${x}, ${y}) is occupied. Your script has stopped`);
     }
     let piece = new constructor(player, x, y);
+    this.io.sockets.emit('new_piece', piece.getState());
     this.pieces.push(piece);
     this.pieces_grid[x][y] = piece;
     return piece;
@@ -224,10 +213,20 @@ class Game {
 
     const piece = this.pieces_grid[old_x][old_y];
 
+    this.io.sockets.emit('move_piece', piece.getState(), new_x, new_y);
+
     this.pieces_grid[old_x][old_y] = null;
 
     this.pieces_grid[new_x][new_y] = piece;
 
+  }
+
+  sendUpdatePiece(piece){
+    this.io.sockets.emit('update_piece', piece.getState());
+  }
+
+  sendUpdatePieceKey(piece, key, value){
+    this.io.sockets.emit('update_piece_key', piece._id, key, value);
   }
 
   canAddPlayerWithName(name){
@@ -270,19 +269,6 @@ class Game {
       if(this.pieces[i].player._id === player_id){
         this.pieces.splice(i, 1);
       }
-    }
-  }
-
-  shiftAndSendGameStateToSockets(){
-    // console.log('shiftAndSendGameStateToSockets', ++this.count);
-    if(!this.io){
-      return;
-    }
-    if(this.eval_game_states.length > 0){
-      this.io.sockets.emit('game_state', this.eval_game_states.shift());
-    }
-    else {
-      this.io.sockets.emit('game_state', this.getState());
     }
   }
   sendGameStateToSockets(){

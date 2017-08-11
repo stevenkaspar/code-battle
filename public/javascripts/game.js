@@ -51,7 +51,14 @@ class Game {
     this.entities   = [];
     this.ready      = false;
 
-    socket.on('game_state', this.handleGameState.bind(this));
+    socket.on('game_state',       this.handleGameState.bind(this));
+    socket.on('new_player',       this.handleNewPlayer.bind(this));
+    socket.on('new_piece',        this.handleNewPiece.bind(this));
+    socket.on('move_piece',       this.handleMovePiece.bind(this));
+    socket.on('update_piece',     this.handleUpdatePiece.bind(this));
+    socket.on('update_piece_key', this.handleUpdatePieceKey.bind(this));
+    socket.on('remove_piece',     this.handleRemovePiece.bind(this));
+    socket.on('game_update',      this.handleGameUpdate.bind(this));
   }
 
   handleGameState(game_state){
@@ -62,7 +69,7 @@ class Game {
     }
 
     for(let p of this.game_state.pieces){
-      var piece  = null;
+      let piece  = null;
       let entity = app.root.findByName(Piece.nameFromId(p._id));
 
       if(entity === null){
@@ -79,6 +86,52 @@ class Game {
       piece.updateData(p);
     }
 
+  }
+
+  handleNewPlayer(player){
+    console.log(player);
+  }
+  handleNewPiece(piece){
+    this.addNewPiece(piece);
+  }
+  handleMovePiece(piece, new_x, new_y){
+    let local_piece = this.findPieceById(piece._id);
+    if(!local_piece){
+      handleNewPiece(piece);
+    }
+    else {
+      local_piece.setPosition(new_x, new_y);
+    }
+  }
+  handleUpdatePieceKey(piece_id, key, value){
+    let local_piece = this.findPieceById(piece_id);
+    local_piece[key] = value;
+  }
+  handleUpdatePiece(piece){
+    let local_piece = this.findPieceById(piece._id);
+    local_piece.updateData(piece);
+  }
+  handleRemovePiece(piece){
+    let entity = app.root.findByName(Piece.nameFromId(piece._id));
+    entity.destroy();
+    for(let i = 0, l = this.pieces.length; i < l; i++){
+      if(this.pieces[i]._id === piece._id){
+        this.pieces.splice(i, 1);
+        break;
+      }
+    }
+  }
+  handleGameUpdate(update){
+    console.log(update);
+  }
+
+  findPieceById(piece_id){
+    for(let piece of this.pieces){
+      if(piece._id === piece_id){
+        return piece;
+      }
+    }
+    return null;
   }
 
   addNewPiece(piece_data){
@@ -230,11 +283,16 @@ class Game {
 
 class Piece {
   constructor(piece_data){
-    this._id    = piece_data._id;
-    this.x      = piece_data.x;
-    this.y      = piece_data.y;
-    this.player = piece_data.player;
-    this.color  = piece_data.color;
+    this._id     = piece_data._id;
+    this.x       = piece_data.x;
+    this.y       = piece_data.y;
+    this.player  = piece_data.player;
+    this._color  = piece_data.color;
+  }
+
+  set color(value){
+    this._color = value;
+    this.colorModel();
   }
 
   updateData(piece_data){
@@ -269,13 +327,13 @@ class Piece {
   colorModel(color){
     // if color, set it
     if(color){
-      this.color = color;
+      this._color = color;
     }
     // if no color and no color yet, use red
-    else if(!color && !this.color){
-      this.color = 'red';
+    else if(!color && !this._color){
+      this._color = 'red';
     }
-    this.entity.model.model.meshInstances[0].material = app.assets.find(this.color).resource;
+    this.entity.model.model.meshInstances[0].material = app.assets.find(this._color).resource;
   }
 
   static nameFromId(_id){
@@ -497,8 +555,9 @@ let init = () => {
   game.createCamera();
   game.createLight();
 
-  game.loadGameState().then(game_state => {
-    game.loadAssets().then(boardReady);
+  game.loadAssets().then(() => {
+    boardReady();
+    game.loadGameState();
   })
 
   let boardReady = () => {

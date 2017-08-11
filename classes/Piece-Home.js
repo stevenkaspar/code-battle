@@ -16,6 +16,13 @@ exports = module.exports = game => {
         movable:    false,
         attackable: false
       });
+
+
+      Object.defineProperty(this, 'constructed', {
+        value:      true,
+        writable:   false,
+        enumerable: false
+      })
     }
     get type(){       return map.get(this).type; }
     get movable(){

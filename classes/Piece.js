@@ -9,15 +9,14 @@ exports = module.exports = game => {
   class Piece {
     constructor(player, x, y){
 
-      this.color  = 'blue';
-
       map.set(this, {
         _id:     uuid(),
         player:  player,
-        health:  100,
+        health:  1000000,
         x:       x,
         y:       y,
-        active:  true
+        active:  true,
+        color:   'blue'
       });
 
       const private_keys = [
@@ -43,9 +42,22 @@ exports = module.exports = game => {
     get x(){       return map.get(this).x; }
     get y(){       return map.get(this).y; }
     get active(){  return map.get(this).active; }
+    get color(){   return map.get(this).color; }
 
     get world() {
       return game.getPiecesAroundPoint(this.player, this.x, this.y);
+    }
+
+    set color(value){
+      if(!this.active){
+        throw new Error(`Piece (${this.x}, ${this.y}) is inactive (health < 0). So you can't color it..`);
+      }
+
+      map.get(this).color = value;
+
+      if(this.constructed){
+        game.sendUpdatePieceKey(this, 'color', value);
+      }
     }
 
     set active(value){
