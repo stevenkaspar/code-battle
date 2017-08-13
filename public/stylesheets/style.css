@@ -4144,6 +4144,11 @@ html, body {
   width: 100%;
   height: auto; }
 
+#JoinForm input {
+  border-color: white;
+  border-style: solid;
+  border-width: 0px 0px 1px 0px; }
+
 #CodeContainer {
   height: 100%;
   max-height: 100%;
