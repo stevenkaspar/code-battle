@@ -6,6 +6,8 @@ class Game {
 
     this.players_sockets = {};
 
+    this.players_turn_data = {};
+
     Object.defineProperty(this, 'pieces', {
       writable:   true,
       enumerable: true,
@@ -160,14 +162,29 @@ class Game {
 
       // go through players randomly and evalCode
       for(let p of this.getPlayerOrder()){
+        // set turn data so we know what they had at start of turn
+        this.setPlayerTurnData(p);
         // eval the player code
         p.evalCode();
-
+        // clear turn data so we are ready next round
+        this.clearPlayerTurnData(p);
       }
 
     }
 
     this._time += this.UPDATE_INTERVAL_MS;
+  }
+
+  setPlayerTurnData(player){
+    this.players_turn_data[player._id] = {
+      home_count:    player.homes.length,
+      warrior_count: player.warriors.length,
+      home_builds:    0,
+      warrior_builds: 0,
+    };
+  }
+  clearPlayerTurnData(player){
+    this.players_turn_data[player._id] = {};
   }
 
   addPlayer(name, pin){
@@ -246,18 +263,77 @@ class Game {
     }
   }
 
-  _playerBuild(player, constructor, x, y){
+  playerBuild(player, constructor, x, y){
+
+    // check that tile is an actual tile in the world
     if(!this.tileActive(x, y)){
       throw new Error(`That tile (${x}, ${y}) is not active<br/>  There must be no where to build before the grid is expanded<br/>  Your script has stopped`);
     }
+
+    // check if tile already has a piece or not
     if(this.tileOccupied(x, y)){
       throw new Error(`That tile (${x}, ${y}) is occupied<br/>  Your script has stopped`);
     }
+
+    // check if turn data allows building the piece
+    let can_build = this.playerCanBuildThisTurn(player, constructor);
+    // expect can_build to be true or a String with an error message
+    if(can_build !== true){
+      throw new Error(can_build);
+    }
+
+    // check that piece is buildable at desired location
+    can_build = this.pieceCanBuildThere(player, constructor, x, y);
+    // expect can_build to be true or a String with an error message
+    if(can_build !== true){
+      throw new Error(can_build);
+    }
+
     let piece = new constructor(player, x, y);
     this.io.sockets.emit('new_piece', piece.getState());
     this.pieces.push(piece);
     this.pieces_grid[x][y] = piece;
+
+    this.addPieceBuildToTurnData(piece);
+
     return piece;
+  }
+
+  playerCanBuildThisTurn(player, constructor){
+    if(constructor.getType() === 'Warrior'){
+      const max_warrior_builds = this.players_turn_data[player._id].home_count * 4;
+      if(max_warrior_builds <= this.players_turn_data[player._id].warrior_builds){
+        return `You cannot build a warrior<br/>  You may only build 4 warriors per home you have before the turn`;
+      }
+    }
+    else if(constructor.getType() === 'Home'){
+      const max_home_builds = 1;
+      if(max_home_builds <= this.players_turn_data[player._id].home_builds){
+        return `You cannot build a home<br/>  You may only build 1 home per turn`;
+      }
+    }
+
+    return true;
+  }
+
+  pieceCanBuildThere(player, constructor, x, y){
+    if(constructor.getType() === 'Warrior'){
+      let shares_border_with_home = false;
+      // warrior must be built next to home
+      for(let home of player.homes){
+        if(Game.shareBorder(home.x, home.y, x, y)){
+          shares_border_with_home = true;
+          break;
+        }
+      }
+      return shares_border_with_home ? true : `Warrior can only be built on a tile bordering a home<br/>  ${x}, ${y} is not a home-bordering tile`;
+    }
+
+    return true;
+  }
+
+  addPieceBuildToTurnData(piece){
+    this.players_turn_data[piece.player._id][`${piece.type.toLowerCase()}_builds`]++;
   }
 
   movePiece(old_x, old_y, new_x, new_y){
@@ -324,6 +400,20 @@ class Game {
     // console.log(game_state);
     // console.log(this.pieces_grid);
     this.io.sockets.emit('game_state', game_state);
+  }
+
+  static shareBorder(x1, y1, x2, y2){
+    if(x1 === x2){
+      if(y1 + 1 === y2 || y1 - 1 === y2){
+        return true;
+      }
+    }
+    else if(y1 === y2){
+      if(x1 + 1 === x2 || x1 - 1 === x2){
+        return true;
+      }
+    }
+    return false;
   }
 }
 

@@ -31,6 +31,10 @@ exports = module.exports = game => {
     get attackable(){
       return map.get(this).attackable && this.active;
     }
+
+    static getType(){
+      return 'Home';
+    }
   }
 
   return Home;

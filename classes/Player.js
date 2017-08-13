@@ -55,6 +55,14 @@ exports = module.exports = game => {
       return game.pieces
         .filter(p => p.player._id === this._id);
     }
+    get homes(){
+      return game.pieces
+        .filter(p => (p.player._id === this._id && p.type === 'Home'));
+    }
+    get warriors(){
+      return game.pieces
+        .filter(p => (p.player._id === this._id && p.type === 'Warrior'));
+    }
     get code(){   return map.get(this).code; }
 
     set code(value){
@@ -73,7 +81,7 @@ exports = module.exports = game => {
     }
 
     build(constructor, x, y){
-      return game._playerBuild(this, constructor, x, y);
+      return game.playerBuild(this, constructor, x, y);
     }
 
     init(){
@@ -131,11 +139,10 @@ exports = module.exports = game => {
           this.log(`code didn't finish running`, 'error');
           this.log(`  => your code only has ${game.EVAL_CODE_TIMEOUT_MS}ms to execute`, 'error');
           this.log(`
-  <strong>setting the health of a piece?</strong>
+  <strong>setting the health of or attacking a piece?</strong>
   <code>
-  the <a target='_blank' href='https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty'>setter</a> for health
-  forces a for loop so if you are trying
-  to boost your health too much
+  the <a target='_blank' href='https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty'>setter</a> for some actions force a for loop so if you are trying
+  to boost your health too much or move to every spot on the board in one turn
   it will use all of your execution time
   </code>
             `, 'info');

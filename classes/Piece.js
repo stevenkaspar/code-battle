@@ -77,7 +77,7 @@ exports = module.exports = game => {
       for(var i = 0; i < Math.abs(diff); i++){
         map.get(this).health += direction;
 
-        if(map.get(this).health === 0){
+        if(map.get(this).health <= 0){
           game.removePiece(this._id);
           this.active = false;
         }
