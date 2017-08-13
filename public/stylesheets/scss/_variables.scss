@@ -6,3 +6,6 @@ $base-font-family: monospace;
 // buttons
 $button-font-family: $base-font-family;
 $button-padding:     $default-padding;
+$button-border-width: 0px 0px 4px 0px;
+$button-border-style: solid;
+$button-border-color: darken($brand-success, 15);

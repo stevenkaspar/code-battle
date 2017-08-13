@@ -2,12 +2,6 @@ body {
   font-family: $base-font-family;
 }
 
-button {
-  border:      none;
-  padding:     $button-padding;
-  font-family: $base-font-family;
-}
-
 .overlay {
   z-index:  2;
   position: absolute;

@@ -15,13 +15,13 @@ block content
                 .flex-grow-1#CodeContainer
                     textarea#Code
                 .flex-grow-0
-                    button#SubmitCodeBtn.d-block.w-100.bg-success.text-white use code
+                    button#SubmitCodeBtn.btn.btn-block.btn-success use code
                 #JoinOverlay.overlay.bg-inverse.text-white
                     .overlay-body.bg-white.p-3
                         form#JoinForm
                             input.d-block.bg-inverse.text-white.text-center.p-2#PlayerName(placeholder='name' name='player_name' autofocus required)
                             input.d-block.bg-inverse.text-white.text-center.p-2#PlayerPin(placeholder='pin' name='player_pin' required)
-                            button.d-block.w-100.bg-success.text-white(type='submit') join
+                            button.btn.btn-block.btn-success(type='submit') join
             .col-7.d-flex.flex-column.mh-100
                 .flex-grow-0
                     canvas#Application

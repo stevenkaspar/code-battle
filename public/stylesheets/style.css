@@ -4115,11 +4115,6 @@ template {
 body {
   font-family: monospace; }
 
-button {
-  border: none;
-  padding: 8px;
-  font-family: monospace; }
-
 .overlay {
   z-index: 2;
   position: absolute;
@@ -4134,6 +4129,36 @@ button {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%); }
+
+.btn {
+  border: none;
+  padding: 8px;
+  font-family: monospace;
+  width: 100%; }
+  .btn:disabled {
+    cursor: not-allowed; }
+
+.btn-block {
+  display: block; }
+
+.btn-success {
+  background-color: #5cb85c;
+  color: #fff;
+  border-style: solid;
+  border-color: #3d8b3d;
+  border-width: 0px 0px 4px 0px; }
+  .btn-success:disabled {
+    background-color: #91cf91; }
+  .btn-success:not(:disabled):hover {
+    background-color: #3d8b3d;
+    border-style: solid;
+    border-color: #3d8b3d;
+    border-width: 0px 0px 4px 0px; }
+  .btn-success:not(:disabled):active {
+    background-color: #255625;
+    border-style: solid;
+    border-color: #3d8b3d;
+    border-width: 0px 0px 4px 0px; }
 
 html, body {
   height: 100%;
@@ -4161,6 +4186,3 @@ html, body {
   max-height: 100%;
   overflow-y: auto;
   white-space: pre; }
-
-button[disabled] {
-  opacity: .75; }

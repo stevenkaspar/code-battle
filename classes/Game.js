@@ -220,7 +220,19 @@ class Game {
   }
 
   tileOccupied(x, y){
-    return (this.pieces_grid[x][y] !== null);
+    const row = this.pieces_grid[x];
+    if(row){
+      return row[y] !== null;
+    }
+    return false;
+  }
+
+  tileActive(x, y){
+    const row = this.pieces_grid[x];
+    if(!row){
+      return false;
+    }
+    return (row[y] !== void 0);
   }
 
   removePiece(piece_id){
@@ -235,8 +247,11 @@ class Game {
   }
 
   _playerBuild(player, constructor, x, y){
+    if(!this.tileActive(x, y)){
+      throw new Error(`That tile (${x}, ${y}) is not active<br/>  There must be no where to build before the grid is expanded<br/>  Your script has stopped`);
+    }
     if(this.tileOccupied(x, y)){
-      throw new Error(`That tile (${x}, ${y}) is occupied. Your script has stopped`);
+      throw new Error(`That tile (${x}, ${y}) is occupied<br/>  Your script has stopped`);
     }
     let piece = new constructor(player, x, y);
     this.io.sockets.emit('new_piece', piece.getState());
