@@ -1,5 +1,7 @@
 'use strict';
 
+const sleep = require('sleep');
+
 class Game {
   constructor(){
     this.players = [];
@@ -49,7 +51,7 @@ class Game {
     // - 1000 so 1 second padding
     this.ALOTTED_EVAL_MS = this.EVAL_INTERVAL_MS - 1000;
 
-    this.EVAL_CODE_TIMEOUT_MS = 200;
+    this.EVAL_CODE_TIMEOUT_MS = 3000;
 
     this.MAX_PLAYERS = this.ALOTTED_EVAL_MS / this.EVAL_CODE_TIMEOUT_MS;
 
@@ -185,6 +187,11 @@ class Game {
   }
   clearPlayerTurnData(player){
     this.players_turn_data[player._id] = {};
+
+    for(let p of player.pieces){
+      this.send('piece_animation', p._id, 'idle');
+    }
+
   }
 
   addPlayer(name, pin){
@@ -226,7 +233,13 @@ class Game {
       let y_c = y_low;
       return_grid[cur] = [];
       while(y_c <= y_high){
-        return_grid[cur].push(this.pieces_grid[x_low][y_c]);
+        let row = this.pieces_grid[x_low];
+        if(!row){
+          return_grid[cur].push(undefined);
+        }
+        else {
+          return_grid[cur].push(row[y_c]);
+        }
         y_c++;
       }
       x_low++;
@@ -343,12 +356,60 @@ class Game {
 
     const piece = this.pieces_grid[old_x][old_y];
 
-    this.io.sockets.emit('move_piece', piece.getState(), new_x, new_y);
-
     this.pieces_grid[old_x][old_y] = null;
 
     this.pieces_grid[new_x][new_y] = piece;
 
+    let direction = 0;
+    if(old_x !== new_x){
+      direction = (new_x > old_x) ? 90 : 270;
+    }
+    else {
+      direction = (new_y > old_y) ? 180 : 0;
+    }
+    this.send('piece_direction', piece._id, direction);
+    this.send('move_piece',      piece.getState(), new_x, new_y);
+
+    // adding such long sleep so that movement can be seen
+    // and the piece doesn't just appear to be teleporting
+    sleep.msleep(100);
+
+  }
+
+  handleAttack(attacker, attackee, damage){
+    if(!attacker.attackable){
+      throw new Error(`This piece (${attacker.x}, ${attacker.y}) cannot attack. Script terminated`);
+    }
+    let can_attack = false;
+    if(attacker.x === attackee.x){
+      if(attacker.y + 1 === attackee.y || attacker.y - 1 === attackee.y){
+        can_attack = true;
+      }
+    }
+    else if(attacker.y === attackee.y){
+      if(attacker.x + 1 === attackee.x || attacker.x - 1 === attackee.x){
+        can_attack = true;
+      }
+    }
+    if(can_attack){
+      this.send('piece_animation', attacker._id, 'attacking');
+      for(var i = 0; i < damage; i++){
+        attackee.health += -1;
+        sleep.msleep(50);
+      }
+    }
+    else {
+      attacker.player.log(`You tried to attack nothing<br/>  script sleeping`, 'info');
+      sleep.msleep(damage * 1);
+    }
+    this.send('piece_animation', attacker._id, 'idle');
+  }
+
+
+
+  send(){
+    let args = [...arguments];
+    this.io.sockets.emit.apply(this.io.sockets, args);
   }
 
   sendUpdatePiece(piece){

@@ -1,6 +1,6 @@
 'use strict';
 
-const uuid = require('uuid/v4');
+const uuid  = require('uuid/v4');
 
 exports = module.exports = game => {
 
@@ -12,7 +12,7 @@ exports = module.exports = game => {
       map.set(this, {
         _id:     uuid(),
         player:  player,
-        health:  1000000,
+        health:  100,
         x:       x,
         y:       y,
         active:  true,
@@ -97,6 +97,7 @@ exports = module.exports = game => {
       const direction = diff > 0 ? 1 : (diff === 0 ? 0 : -1);
       // loop is used because code will be limited to
       // execution time
+      game.send('piece_animation', this._id, 'running');
       for(var i = 0; i < Math.abs(diff); i++){
         let next_val = map.get(this).x + direction;
 
@@ -104,6 +105,7 @@ exports = module.exports = game => {
 
         map.get(this).x = next_val;
       }
+      game.send('piece_animation', this._id, 'idle');
     }
 
     set y(value){
@@ -116,6 +118,7 @@ exports = module.exports = game => {
       const direction = diff > 0 ? 1 : (diff === 0 ? 0 : -1);
       // loop is used because code will be limited to
       // execution time
+      game.send('piece_animation', this._id, 'running');
       for(var i = 0; i < Math.abs(diff); i++){
         let next_val = map.get(this).y + direction;
 
@@ -123,6 +126,7 @@ exports = module.exports = game => {
 
         map.get(this).y = next_val;
       }
+      game.send('piece_animation', this._id, 'idle');
     }
 
     getState(){
@@ -141,32 +145,7 @@ exports = module.exports = game => {
     }
 
     attack(attackee, damage){
-      if(!this.attackable){
-        throw new Error(`This piece (${this.x}, ${this.y}) cannot attack. Script terminated`);
-      }
-      let can_attack = false;
-      if(this.x === attackee.x){
-        if(this.y + 1 === attackee.y || this.y - 1 === attackee.y){
-          can_attack = true;
-        }
-      }
-      else if(this.y === attackee.y){
-        if(this.x + 1 === attackee.x || this.x - 1 === attackee.x){
-          can_attack = true;
-        }
-      }
-
-      if(can_attack){
-        attackee.health += -damage;
-      }
-      else {
-        var i = 0;
-        while(i < Math.abs(damage * 2)){
-          // waste time of attacker
-          i++;
-        }
-        this.player.log(`You tried to attack nothing. This is a <em>damage x 2</em> execution time penalty`, 'info');
-      }
+      game.handleAttack(this, attackee, damage);
     }
 
     heal( points ){

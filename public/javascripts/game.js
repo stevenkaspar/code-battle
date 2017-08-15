@@ -58,6 +58,8 @@ class Game {
     socket.on('update_piece',     this.handleUpdatePiece.bind(this));
     socket.on('update_piece_key', this.handleUpdatePieceKey.bind(this));
     socket.on('remove_piece',     this.handleRemovePiece.bind(this));
+    socket.on('piece_animation',  this.handlePieceAnimation.bind(this));
+    socket.on('piece_direction',  this.handlePieceDirection.bind(this));
     socket.on('game_update',      this.handleGameUpdate.bind(this));
   }
 
@@ -97,7 +99,7 @@ class Game {
   handleMovePiece(piece, new_x, new_y){
     let local_piece = this.findPieceById(piece._id);
     if(!local_piece){
-      handleNewPiece(piece);
+      this.handleNewPiece(piece);
     }
     else {
       local_piece.setPosition(new_x, new_y);
@@ -120,6 +122,16 @@ class Game {
         break;
       }
     }
+  }
+  handlePieceAnimation(piece_id, animation){
+    let local_piece = this.findPieceById(piece_id);
+    if(!local_piece) return;
+    local_piece.animation = animation;
+  }
+  handlePieceDirection(piece_id, direction){
+    let local_piece = this.findPieceById(piece_id);
+    if(!local_piece) return;
+    local_piece.direction = direction;
   }
   handleGameUpdate(update){
     console.log(update);
@@ -254,6 +266,21 @@ class Game {
         url: `/files/colors/white.json`,
         name: 'white',
         type: 'material'
+      },
+      {
+        url: `/files/animations/warrior-running.json`,
+        name: 'warrior-running',
+        type: 'animation'
+      },
+      {
+        url: `/files/animations/warrior-idle.json`,
+        name: 'warrior-idle',
+        type: 'animation'
+      },
+      {
+        url: `/files/animations/warrior-attacking.json`,
+        name: 'warrior-attacking',
+        type: 'animation'
       }
     ];
 
@@ -296,6 +323,14 @@ class Piece {
     this.colorModel();
   }
 
+  set direction(value){
+    this.entity.setEulerAngles(0, 0, value);
+  }
+
+  set animation(value){
+    // have to setup if should do something
+  }
+
   updateData(piece_data){
     this.setPosition(piece_data.x, piece_data.y);
     this.colorModel(piece_data.color);
@@ -334,7 +369,9 @@ class Piece {
     else if(!color && !this._color){
       this._color = 'red';
     }
-    this.entity.model.model.meshInstances[0].material = app.assets.find(this._color).resource;
+    for(let i = 0, l = this.entity.model.model.meshInstances.length; i < l; i++){
+      this.entity.model.model.meshInstances[i].material = app.assets.find(this._color).resource;
+    }
   }
 
   static nameFromId(_id){
@@ -377,19 +414,47 @@ class Warrior extends Piece {
     this.build();
   }
 
+  set animation(value){
+    console.log(value);
+    if(value === 'idle'){
+      this.entity.animation.play(`warrior-running`, 0);
+      this.entity.animation.play(`warrior-attacking`, 0);
+    }
+    this.entity.animation.play(`warrior-${value}`, 0);
+  }
+
   build(){
     let entity = new pc.Entity(Piece.nameFromId(this._id));
     this.entity = entity;
 
     let model_asset = app.assets.find('warrior');
-    entity.addComponent('model', {
+    let model = entity.addComponent('model', {
       type: 'asset',
       asset: model_asset
     });
+
+    let animation_running = app.assets.find('warrior-running');
+    let animation_idle = app.assets.find('warrior-idle');
+    let animation_attacking = app.assets.find('warrior-attacking');
+    entity.addComponent('animation', {
+      assets: [
+        animation_idle,
+        animation_running,
+        animation_attacking
+      ],
+      activate: false,
+      enabled: true,
+      loop: true,
+      speed: 1.8
+    });
+
+    this.entity.animation.activate = true;
+
+
     let entity_scale = entity.getLocalScale();
-    entity_scale.x = .4;
-    entity_scale.y = .4;
-    entity_scale.z = .75;
+    entity_scale.x = .003;
+    entity_scale.y = .003;
+    entity_scale.z = .003;
     entity.setLocalScale(entity_scale);
     entity.setPosition(this.getX(), this.getY(), this.getZ());
 
@@ -397,9 +462,7 @@ class Warrior extends Piece {
   }
 
   getZ(){
-    const scale = this.entity.getLocalScale();
-
-    return 0;
+    return .5;
   }
 
 }
