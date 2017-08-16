@@ -96,8 +96,8 @@ class Game {
   handleNewPiece(piece){
     this.addNewPiece(piece);
   }
-  handleMovePiece(piece, new_x, new_y){
-    let local_piece = this.findPieceById(piece._id);
+  handleMovePiece(piece_id, new_x, new_y){
+    let local_piece = this.findPieceById(piece_id);
     if(!local_piece){
       this.handleNewPiece(piece);
     }
@@ -109,15 +109,15 @@ class Game {
     let local_piece = this.findPieceById(piece_id);
     local_piece[key] = value;
   }
-  handleUpdatePiece(piece){
-    let local_piece = this.findPieceById(piece._id);
+  handleUpdatePiece(piece_id){
+    let local_piece = this.findPieceById(piece_id);
     local_piece.updateData(piece);
   }
-  handleRemovePiece(piece){
-    let entity = app.root.findByName(Piece.nameFromId(piece._id));
+  handleRemovePiece(piece_id){
+    let entity = app.root.findByName(Piece.nameFromId(piece_id));
     entity.destroy();
     for(let i = 0, l = this.pieces.length; i < l; i++){
-      if(this.pieces[i]._id === piece._id){
+      if(this.pieces[i]._id === piece_id){
         this.pieces.splice(i, 1);
         break;
       }
@@ -334,6 +334,7 @@ class Piece {
   updateData(piece_data){
     this.setPosition(piece_data.x, piece_data.y);
     this.colorModel(piece_data.color);
+    this.direction = piece_data.direction ? piece_data.direction : 0;
   }
 
   placeEntity(){
@@ -597,9 +598,14 @@ for(let p of player.pieces){
 // You're code will be evaluated every 5 seconds
 // You can take action with your player using the player variable
 //
-// player.build(Home,    4, 4);
+if(!player.home)
+  player.home = player.build(Home,    4, 4);
 // player.build(Wall,    4, 5);
-// player.build(Warrior, 4, 6);
+if(!player.warrior)
+  player.warrior = player.build(Warrior, 4, 5);
+
+if(player.warrior.x === 4)
+  player.move(player.warrior, player.warrior.x -1, player.warrior.y);
 
 
 // All of the build functions return the piece

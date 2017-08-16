@@ -10,26 +10,9 @@ class Game {
 
     this.players_turn_data = {};
 
-    Object.defineProperty(this, 'pieces', {
-      writable:   true,
-      enumerable: true,
-      value:      []
-    })
+    this.pieces_hash = {};
 
-    // create an initial grid of 10x10
-    const grid_size = 10;
-    let pieces_grid = new Array(grid_size);
-    for(var i = 0, l = pieces_grid.length; i < l; i++){
-      pieces_grid[i] = new Array(grid_size);
-      for(var i2 = 0, l2 = pieces_grid[i].length; i2 < l2; i2++){
-        pieces_grid[i][i2] = null;
-      }
-    }
-    Object.defineProperty(this, 'pieces_grid', {
-      writable:   true,
-      enumerable: true,
-      value:      pieces_grid
-    })
+    this.current_size = 10;
 
 
     // this.count = 0;
@@ -120,8 +103,32 @@ class Game {
   getState(){
     return {
       players: this.players.map(p => p.getState()),
-      pieces:  this.pieces.map(p => p.getState())
+      pieces:  this.piecesHashToArray().map(p => {
+        return Object.assign(p.piece.getState(), {x: p.x, y: p.y});
+      })
     }
+  }
+
+  piecesHashToArray(filterFn){
+    let return_array = [];
+    let typeof_filterFn = typeof filterFn;
+    for(let k in this.pieces_hash){
+      let x_y_split = k.split(/_/i);
+      let x = parseInt(x_y_split[0]);
+      let y = parseInt(x_y_split[1]);
+
+      let piece_data = Object.assign({}, this.pieces_hash[k], {x: x, y: y})
+
+      if(typeof_filterFn === 'function'){
+        if(filterFn(piece_data)){
+          return_array.push(piece_data);
+        }
+      }
+      else {
+        return_array.push(piece_data);
+      }
+    }
+    return return_array;
   }
 
   start(){
@@ -220,29 +227,29 @@ class Game {
     })
   }
 
-  getPiecesAroundPoint(player, x, y){
-    let x_low    = x - 1;
+  getPiecesAroundPoint(x, y){
+    const x_low    = x - 1;
     const x_high = x + 1;
-    const y_low  = y - 1;
+    let   y_low  = y - 1;
     const y_high = y + 1;
 
     let return_grid = [];
 
     let cur = 0;
-    while(x_low <= x_high){
-      let y_c = y_low;
+    while(y_low <= y_high){
+      let x_c = x_low;
       return_grid[cur] = [];
-      while(y_c <= y_high){
-        let row = this.pieces_grid[x_low];
-        if(!row){
-          return_grid[cur].push(undefined);
+      while(x_c <= x_high){
+        let piece_data = this.pieces_hash[`${x_c}_${y_low}`];
+        if(!piece_data){
+          return_grid[cur].push(null);
         }
         else {
-          return_grid[cur].push(row[y_c]);
+          return_grid[cur].push(piece_data.piece);
         }
-        y_c++;
+        x_c++;
       }
-      x_low++;
+      y_low++;
       cur++;
     }
 
@@ -250,27 +257,23 @@ class Game {
   }
 
   tileOccupied(x, y){
-    const row = this.pieces_grid[x];
-    if(row){
-      return row[y] !== null;
+    const piece_data = this.pieces_hash[`${x}_${y}`];
+    if(!piece_data){
+      return false;
     }
-    return false;
+    return true;
   }
 
   tileActive(x, y){
-    const row = this.pieces_grid[x];
-    if(!row){
-      return false;
-    }
-    return (row[y] !== void 0);
+    return x < this.current_size && y < this.current_size;
   }
 
   removePiece(piece_id){
-    for(let i = 0, l = this.pieces.length; i < l; i++){
-      if(this.pieces[i]._id === piece_id){
-        this.io.sockets.emit('remove_piece', this.pieces[i].getState());
-        this.pieces_grid[this.pieces[i].x][this.pieces[i].y] = null;
-        this.pieces.splice(i, 1);
+    for(let k in this.pieces_hash){
+      let piece_data = this.pieces_hash[k];
+      if(piece_data.piece._id === piece_id){
+        this.io.sockets.emit('remove_piece', piece_id);
+        delete this.pieces_hash[k];
         break;
       }
     }
@@ -302,12 +305,15 @@ class Game {
       throw new Error(can_build);
     }
 
-    let piece = new constructor(player, x, y);
+    let piece = new constructor();
+    this.pieces_hash[`${x}_${y}`] = {
+      health: 100,
+      piece:  piece,
+      player: player
+    };
     this.io.sockets.emit('new_piece', piece.getState());
-    this.pieces.push(piece);
-    this.pieces_grid[x][y] = piece;
 
-    this.addPieceBuildToTurnData(piece);
+    this.addPieceBuildToTurnData(this.pieces_hash[`${x}_${y}`]);
 
     return piece;
   }
@@ -345,30 +351,48 @@ class Game {
     return true;
   }
 
-  addPieceBuildToTurnData(piece){
-    this.players_turn_data[piece.player._id][`${piece.type.toLowerCase()}_builds`]++;
+  addPieceBuildToTurnData(piece_data){
+    this.players_turn_data[piece_data.player._id][`${piece_data.piece.type.toLowerCase()}_builds`]++;
   }
 
-  movePiece(old_x, old_y, new_x, new_y){
+  handlePlayerMove(player, piece, new_x, new_y){
     if(this.tileOccupied(new_x, new_y)){
       throw new Error(`That tile (${new_x}, ${new_y}) is occupied. Your script has stopped. <br/>Make sure to check <em>piece.world</em> to see what is around your piece`);
     }
 
-    const piece = this.pieces_grid[old_x][old_y];
+    let piece_data = this.findPieceDataWithXY(piece._id);
 
-    this.pieces_grid[old_x][old_y] = null;
-
-    this.pieces_grid[new_x][new_y] = piece;
-
-    let direction = 0;
-    if(old_x !== new_x){
-      direction = (new_x > old_x) ? 90 : 270;
+    if(piece_data.player._id !== player._id){
+      throw new Error(`That piece (${new_x}, ${new_y}) is not yours. Your script has stopped`);
     }
-    else {
-      direction = (new_y > old_y) ? 180 : 0;
+
+    let old_x = piece_data.x;
+    let old_y = piece_data.y;
+
+    let x_dist = Math.abs(new_x - old_x);
+    let y_dist = Math.abs(new_y - old_y);
+
+    if(x_dist > 0 && y_dist > 0){
+      throw new Error(`That piece (${new_x}, ${new_y}) can only move in one direction at a time`);
     }
-    this.send('piece_direction', piece._id, direction);
-    this.send('move_piece',      piece.getState(), new_x, new_y);
+    if(x_dist > 1 || y_dist > 1){
+      throw new Error(`That piece (${new_x}, ${new_y}) can only move one tile at a time`);
+    }
+
+    delete piece_data.x;
+    delete piece_data.y;
+
+    const new_direction = Game.getDirection(old_x, old_y, new_x, new_y);
+    if(!isNaN(new_direction)){
+      piece_data.direction = new_direction;
+    }
+
+    this.pieces_hash[`${new_x}_${new_y}`] = piece_data;
+
+    delete this.pieces_hash[`${old_x}_${old_y}`];
+
+    this.send('piece_direction', piece_data.piece._id, piece_data.direction);
+    this.send('move_piece',      piece_data.piece._id, new_x, new_y);
 
     // adding such long sleep so that movement can be seen
     // and the piece doesn't just appear to be teleporting
@@ -376,7 +400,33 @@ class Game {
 
   }
 
-  handleAttack(attacker, attackee, damage){
+  findPieceData(piece_id){
+    for(let k in this.pieces_hash){
+      let piece_data = this.pieces_hash[k];
+      if(piece_data.piece._id === piece_id){
+        return piece_data;
+      }
+    }
+    return null;
+  }
+  findPieceDataWithXY(piece_id){
+    for(let k in this.pieces_hash){
+      let piece_data = this.pieces_hash[k];
+      if(piece_data.piece._id === piece_id){
+        let x_y_split = k.split(/_/i);
+        let x = parseInt(x_y_split[0]);
+        let y = parseInt(x_y_split[1]);
+        return Object.assign(piece_data, {x: x, y: y});
+      }
+    }
+    return null;
+  }
+
+  handlePlayerAttack(player, attacker, attackee, damage){
+
+    let attacker_data = this.findPieceData(attacker._id);
+    let attackee_data = this.findPieceData(attackee._id);
+
     if(!attacker.attackable){
       throw new Error(`This piece (${attacker.x}, ${attacker.y}) cannot attack. Script terminated`);
     }
@@ -392,17 +442,44 @@ class Game {
       }
     }
     if(can_attack){
+      const new_direction = Game.getDirection(attacker.x, attacker.y, attackee.x, attackee.y);
+      if(!isNaN(new_direction)){
+        attacker_data.direction = new_direction;
+      }
+      this.send('piece_direction', attacker._id, attacker.direction);
       this.send('piece_animation', attacker._id, 'attacking');
       for(var i = 0; i < damage; i++){
-        attackee.health += -1;
+        this.pieces_hash[`${attackee.x}_${attackee.y}`].health += -1;
+
+        if(attackee.health <= 0){
+          this.removePiece(attackee._id);
+        }
+
         sleep.msleep(50);
       }
     }
     else {
-      attacker.player.log(`You tried to attack nothing<br/>  script sleeping`, 'info');
+      attacker_data.player.log(`You tried to attack nothing<br/>  script sleeping`, 'info');
       sleep.msleep(damage * 1);
     }
     this.send('piece_animation', attacker._id, 'idle');
+  }
+
+  handlePlayerHeal(player, piece, amount){
+    let piece_data = this.findPieceData(piece._id);
+    if(player._id !== piece_data.player._id){
+      player.log(`Healing at 3x the normal rate because you are helping another :')`, 'success');
+    }
+    for(let i = 0; i < amount; i++){
+      this.pieces_hash[`${piece.x}_${piece.y}`].health += 1;
+
+      if(player._id !== piece_data.player._id){
+        sleep.msleep(25);
+      }
+      else {
+        sleep.msleep(75);
+      }
+    }
   }
 
 
@@ -418,15 +495,6 @@ class Game {
 
   sendUpdatePieceKey(piece, key, value){
     this.io.sockets.emit('update_piece_key', piece._id, key, value);
-  }
-
-  findPlayerByName(name){
-    for(let p of this.players){
-      if(p.name === name){
-        return p;
-      }
-    }
-    return null;
   }
 
   setPlayerCode(player_id, code){
@@ -446,21 +514,21 @@ class Game {
       return reject();
     })
   }
-  removePlayerData(player_id){
-    for(var i = this.pieces.length - 1; i >= 0; i += -1){
-      if(this.pieces[i].player._id === player_id){
-        this.pieces.splice(i, 1);
+
+  findPlayerByName(name){
+    for(let p of this.players){
+      if(p.name === name){
+        return p;
       }
     }
+    return null;
   }
+
   sendGameStateToSockets(){
     if(!this.io){
       return;
     }
-    const game_state = this.getState();
-    // console.log(game_state);
-    // console.log(this.pieces_grid);
-    this.io.sockets.emit('game_state', game_state);
+    this.io.sockets.emit('game_state', this.getState());
   }
 
   static shareBorder(x1, y1, x2, y2){
@@ -475,6 +543,19 @@ class Game {
       }
     }
     return false;
+  }
+  /**
+   * Gets new direction based on old and new coords
+   * If no difference, returns null
+   */
+  static getDirection(old_x, old_y, new_x, new_y){
+    if(old_x !== new_x){
+      return (new_x > old_x) ? 90 : 270;
+    }
+    else if(old_y !== new_y){
+      return (new_y > old_y) ? 180 : 0;
+    }
+    return null;
   }
 }
 

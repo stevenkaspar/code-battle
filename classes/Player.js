@@ -26,6 +26,8 @@ exports = module.exports = game => {
       });
 
       const private_keys = [
+        'attack',
+        'move',
         'getState',
         'build',
         'init',
@@ -52,16 +54,17 @@ exports = module.exports = game => {
       return game.players_sockets[this._id];
     }
     get pieces(){
-      return game.pieces
-        .filter(p => p.player._id === this._id);
+      return game.piecesHashToArray(piece_data => {
+        return this._id === piece_data.player._id;
+      }).map(p => p.piece);
     }
     get homes(){
-      return game.pieces
-        .filter(p => (p.player._id === this._id && p.type === 'Home'));
+      return this.pieces
+        .filter(p => (p.type === 'Home'));
     }
     get warriors(){
-      return game.pieces
-        .filter(p => (p.player._id === this._id && p.type === 'Warrior'));
+      return this.pieces
+        .filter(p => (p.type === 'Warrior'));
     }
     get code(){   return map.get(this).code; }
 
@@ -72,6 +75,18 @@ exports = module.exports = game => {
     }
 
     //--- private get/sets
+
+    attack(attacker, attackee, damage){
+      game.handlePlayerAttack(this, attacker, attackee, damage);
+    }
+
+    move(piece, x, y){
+      game.handlePlayerMove(this, piece, x, y);
+    }
+
+    heal(piece, amount){
+      game.handlePlayerHeal(this, piece, amount);
+    }
 
     getState(){
       return {

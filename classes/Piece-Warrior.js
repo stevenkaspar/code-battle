@@ -17,8 +17,6 @@ exports = module.exports = game => {
         attackable: true
       });
 
-      this.color = 'red';
-
       Object.defineProperty(this, 'constructed', {
         value:      true,
         writable:   false,
